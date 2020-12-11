@@ -8,7 +8,7 @@ from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
                           ConversationHandler)
 
 label = ''
-PHOTO_NAME = 1
+SAVE_IMG, SAVE_IMG_CLASS = 1, 2
 photo_file = None
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -30,19 +30,35 @@ def start(update, context):
 
 def receive_img(update, context):
     global photo_file
+    reply_keyboard = []
     photo_file = update.message.photo[-1].get_file()
     reply_keyboard = [os.listdir(os.getcwd()+'/../images')]
+    reply_keyboard.append(["new class"])
     update.message.reply_text('Photo received! On which class does this object belong to? \n If it is a new class you have to create the class first --> /cancel',
                             reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
 
-
-    return PHOTO_NAME
+    return SAVE_IMG
 
 def save_img(update, context):
     global photo_file
-    print(update.message.text)
+
+    if update.message.text == "new class":
+        update.message.reply_text('Please give a name for the new class:')
+        return SAVE_IMG_CLASS
+
     img_directory = os.getcwd() + '/../images/' + update.message.text
-    img_name = str(len(os.listdir(img_directory))) + '.jpg'
+    img_name = update.message.text +"_" + str(len(os.listdir(img_directory))) + '.jpg'
+    photo_file.download(os.path.join(img_directory, img_name))
+    update.message.reply_text('Photo saved!')
+
+    return ConversationHandler.END
+
+def save_img_class(update, context):
+    global photo_file
+    
+    img_directory = os.getcwd() + '/../images/' + update.message.text
+    os.mkdir(img_directory)
+    img_name = update.message.text +"_" + str(len(os.listdir(img_directory))) + '.jpg'
     photo_file.download(os.path.join(img_directory, img_name))
     update.message.reply_text('Photo saved!')
 
@@ -103,6 +119,8 @@ def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
+def location(update, context):
+    print(update)
 
 def main():
     """Start the bot."""
@@ -121,7 +139,8 @@ def main():
          entry_points=[MessageHandler(Filters.photo, receive_img)],
 
          states={
-             PHOTO_NAME: [MessageHandler(Filters.text, save_img)],
+             SAVE_IMG: [MessageHandler(Filters.text, save_img)],
+             SAVE_IMG_CLASS: [MessageHandler(Filters.text, save_img_class)],
          },
 
          fallbacks=[CommandHandler('cancel', cancel)]
@@ -137,6 +156,7 @@ def main():
     dp.add_handler(MessageHandler(Filters.text, echo))
     #dp.add_handler(MessageHandler(Filters.video, process_video))
     dp.add_handler(MessageHandler(Filters.photo, save_img))
+    dp.add_handler(MessageHandler(Filters.location, location))
 
 
     # log all errors
