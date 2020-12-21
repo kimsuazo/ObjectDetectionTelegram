@@ -6,9 +6,13 @@ from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardBu
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
                           ConversationHandler)
 
-label = ''
-SAVE_IMG, SAVE_IMG_CLASS = 1, 2
-photo_file = None
+RECEIVE_VIDEO, SAVE_VIDEO, SAVE_VIDEO_CLASS, RECEIVE_IMAGE, SAVE_IMAGE, SAVE_IMAGE_CLASS = range(6)
+
+root = os.getcwd()
+video_input_path = root + '/../input/video/input_video.mp4'
+image_input_path = root + '/../input/image/input_image.jpg'
+classes_directory = root + '/../images'
+
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -20,52 +24,101 @@ logger = logging.getLogger(__name__)
 
 def echo(update, context):
     """Echo the user message."""
-    reply_keyboard = [["/Train", "/Predict", ["/Upload"]]]
-    update.message.reply_text("This is ODT bot (Object Detection Telegram bot), I simply run an AI model on the backend each time you send me an image. \n Please send an image and let's see what I find there",
+    reply_keyboard = [["/Train", "/Predict"], ["/Upload", "/Classes"]]
+    update.message.reply_text("This is ODT bot (Object Detection Telegram bot), I am a Machine Learning interface that currently runs only an Object Classification model. \n What do you want to do?",
                             reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False))
 
 def start(update, context):
-    update.message.reply_text('Som-hi')
+    reply_keyboard = [["/Train", "/Predict"], ["/Upload", "/Classes"]]
+    update.message.reply_text("This is ODT bot (Object Detection Telegram bot), I am a Machine Learning interface that currently runs only an Object Classification model. \n What do you want to do?",
+                            reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False))
 
 
-def choose_update(update, context):
+####    UPLOAD PIPELINE    ####
+
+def choose_upload(update, context):
     update.message.reply_text("Which kind of file do you want to upload?",
-                            reply_markup=ReplyKeyboardMarkup[["Video", "Photo"]], one_time_keyboard=True)
+                            reply_markup=ReplyKeyboardMarkup([["/Video"], ["/Image"]]), one_time_keyboard=True)
 
-    return set_update
+####    VIDEO PIPELINE    ####
 
-def receive_img(update, context):
-    global photo_file
+def set_video(update, context):
+    update.message.reply_text("Please send me a video! \nTake into account to move the phone around the object so I can learn better this object.")
+    
+    return RECEIVE_VIDEO
+
+def receive_video(update, context):
+    video_file = update.message.video[-1].get_file()
+    video_file.download(video_input_path)
+
     reply_keyboard = []
-    photo_file = update.message.photo[-1].get_file()
-    reply_keyboard = [os.listdir(os.getcwd()+'/../images')]
+    reply_keyboard = [os.listdir(classes_directory)]
     reply_keyboard.append(["new class"])
-    update.message.reply_text('Photo received! On which class does this object belong to? \n If it is a new class you have to create the class first --> /cancel',
+    update.message.reply_text('Photo received! On which class does this object belong to? ',
                             reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+    return SAVE_VIDEO
 
-    return SAVE_IMG
-
-def save_img(update, context):
-    global photo_file
+def save_video(update, context):
 
     if update.message.text == "new class":
         update.message.reply_text('Please give a name for the new class:')
-        return SAVE_IMG_CLASS
+        return SAVE_VIDEO_CLASS
 
-    img_directory = os.getcwd() + '/../images/' + update.message.text
-    img_name = update.message.text +"_" + str(len(os.listdir(img_directory))) + '.jpg'
-    photo_file.download(os.path.join(img_directory, img_name))
+    class_directory = os.path.join(classes_directory, update.message.text)
+    utils.video2frames(video_input_path, class_directory)
     update.message.reply_text('Photo saved!')
 
     return ConversationHandler.END
 
-def save_img_class(update, context):
-    global photo_file
+def save_video_class(update, context):
     
-    img_directory = os.getcwd() + '/../images/' + update.message.text
+    class_directory = os.path.join(classes_directory, update.message.text)
     os.mkdir(img_directory)
-    img_name = update.message.text +"_" + str(len(os.listdir(img_directory))) + '.jpg'
-    photo_file.download(os.path.join(img_directory, img_name))
+    utils.video2frames(video_input_path, class_directory)
+    update.message.reply_text('Photo saved!')
+
+    return ConversationHandler.END
+
+
+####    IMAGE PIPELINE    ####
+
+def set_image(update, context):
+    update.message.reply_text("Please send me an image!")
+    
+    return RECEIVE_IMAGE
+
+def receive_image(update, context):
+    photo_file = update.message.photo[-1].get_file()
+    photo_file.download(image_input_path)
+
+    reply_keyboard = []
+    reply_keyboard = [os.listdir(classes_directory)]
+    reply_keyboard.append(["new class"])
+    update.message.reply_text('Photo received! On which class does this object belong to?',
+                            reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+
+    return SAVE_IMAGE
+
+def save_image(update, context):
+    if update.message.text == "new class":
+        update.message.reply_text('Please give a name for the new class:')
+        return SAVE_IMAGE_CLASS
+
+    class_directory = os.path.join(classes_directory, update.message.text)
+    image_name = update.message.text + "_" + str(len(os.listdir(class_directory))) + '.jpg'
+    image_name = os.path.join(class_directory, image_name)
+    os.rename(image_input_path, image_name)
+    update.message.reply_text('Photo saved!')
+
+    return ConversationHandler.END
+
+def save_image_class(update, context):
+    
+    class_directory = os.path.join(classes_directory, update.message.text)
+    os.mkdir(class_directory)
+    image_name = update.message.text + "_" + str(len(os.listdir(class_directory))) + '.jpg'
+    image_name = os.path.join(class_directory, image_name)
+    os.rename(image_input_path, image_name)
     update.message.reply_text('Photo saved!')
 
     return ConversationHandler.END
@@ -77,23 +130,15 @@ def cancel(update, context):
 
     return ConversationHandler.END
 
+#####################################################################################################
+
 def classes(update, context):
     """Reply with current classes"""
-    reply_keyboard = [os.listdir(os.getcwd() + '/../images')]
+    reply_keyboard = [os.listdir(classes_directory)]
     print(reply_keyboard)
     update.message.reply_text(
-        "The classes are below, if you want to add a class please use the command /newclass",
+        "The classes are below:",
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
-
-
-def newclass(update, context):
-    """Reply with current classes"""
-    reply_keyboard = [os.listdir(os.getcwd()+'/../images')]
-    print(reply_keyboard)
-    update.message.reply_text(
-        "The classes are below, if you want to add a class please use the command /newclass",
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
-
 
 
 def train(update, context):
@@ -122,10 +167,8 @@ def process_video(update, context):
 
 
 def predict(update, context):
-    global photo_file
-
     photo_file = update.message.photo[-1].get_file()
-    img_path = os.getcwd() + "/../predict/image.jpg"
+    img_path = os.getcwd() + "/../input/predict/image.jpg"
     photo_file.download(img_path)
 
 
@@ -152,27 +195,40 @@ def main():
 
     ####    START COMMAND    ####
     dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("Upload", choose_upload))
 
     ####    UPLOAD PIPELINE    ####
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("Upload", choose_update)],
+    video_pipeline = ConversationHandler(
+        entry_points=[CommandHandler("Video", set_video)],
         states={
-            SET_UPDATE: []
-            RECEIVE_IMG: [MessageHandler(Filters.photo, receive_img)],
-            SAVE_IMG: [MessageHandler(Filters.text, save_img)],
-            SAVE_IMG_CLASS: [MessageHandler(Filters.text, save_img_class)],
+            #Video pipeline
+            RECEIVE_VIDEO: [MessageHandler(Filters.video, receive_video)],
+            SAVE_VIDEO: [MessageHandler(Filters.text, save_video)],
+            SAVE_VIDEO_CLASS: [MessageHandler(Filters.text, save_video_class)], 
         },
 
         fallbacks=[CommandHandler('cancel', cancel)]
     )
-    dp.add_handler(conv_handler)
-    
+    image_pipeline = ConversationHandler(
+        entry_points=[CommandHandler("Image", set_image)],
+        states={
+            #Image pipeline
+            RECEIVE_IMAGE: [MessageHandler(Filters.photo, receive_image)],
+            SAVE_IMAGE: [MessageHandler(Filters.text, save_image)],
+            SAVE_IMAGE_CLASS: [MessageHandler(Filters.text, save_image_class)],
+        },
+
+        fallbacks=[CommandHandler('cancel', cancel)]
+    )
+
+    dp.add_handler(video_pipeline)
+    dp.add_handler(image_pipeline)
+
 
     #dp.add_handler(CommandHandler("train", train))
-    #dp.add_handler(CommandHandler("predict", predict))
+    dp.add_handler(CommandHandler("predict", predict))
     #dp.add_handler(CommandHandler("video", video))
     dp.add_handler(CommandHandler("classes", classes))
-    dp.add_handler(CommandHandler("newclass", newclass))
 
     dp.add_handler(MessageHandler(Filters.text, echo))
     #dp.add_handler(MessageHandler(Filters.video, process_video))
