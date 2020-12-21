@@ -1,8 +1,7 @@
-
 import os
 import logging
-
-from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove)
+import predict as pred
+from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup)
 
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
                           ConversationHandler)
@@ -21,12 +20,19 @@ logger = logging.getLogger(__name__)
 
 def echo(update, context):
     """Echo the user message."""
-    update.message.reply_text("This is ODT bot (Object Detection Telegram bot), I simply run an AI model on the backend each time you send me an image. \n Please send an image and let's see what I find there")
-
+    reply_keyboard = [["/Train", "/Predict", ["/Upload"]]]
+    update.message.reply_text("This is ODT bot (Object Detection Telegram bot), I simply run an AI model on the backend each time you send me an image. \n Please send an image and let's see what I find there",
+                            reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False))
 
 def start(update, context):
     update.message.reply_text('Som-hi')
 
+
+def choose_update(update, context):
+    update.message.reply_text("Which kind of file do you want to upload?",
+                            reply_markup=ReplyKeyboardMarkup[["Video", "Photo"]], one_time_keyboard=True)
+
+    return set_update
 
 def receive_img(update, context):
     global photo_file
@@ -115,12 +121,24 @@ def process_video(update, context):
     update.message.reply_text(out.decode("utf-8"))
 
 
+def predict(update, context):
+    global photo_file
+
+    photo_file = update.message.photo[-1].get_file()
+    img_path = os.getcwd() + "/../predict/image.jpg"
+    photo_file.download(img_path)
+
+
+    prediction, confidence = pred.predict_telegram(img_path)
+    
+    update.message.reply_text('The class is {} with a confidence of {}'.format(prediction, confidence))
+
+
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
-def location(update, context):
-    print(update)
+
 
 def main():
     """Start the bot."""
@@ -132,20 +150,23 @@ def main():
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
-    # on different commands - answer in Telegram
-
+    ####    START COMMAND    ####
     dp.add_handler(CommandHandler("start", start))
+
+    ####    UPLOAD PIPELINE    ####
     conv_handler = ConversationHandler(
-         entry_points=[MessageHandler(Filters.photo, receive_img)],
+        entry_points=[CommandHandler("Upload", choose_update)],
+        states={
+            SET_UPDATE: []
+            RECEIVE_IMG: [MessageHandler(Filters.photo, receive_img)],
+            SAVE_IMG: [MessageHandler(Filters.text, save_img)],
+            SAVE_IMG_CLASS: [MessageHandler(Filters.text, save_img_class)],
+        },
 
-         states={
-             SAVE_IMG: [MessageHandler(Filters.text, save_img)],
-             SAVE_IMG_CLASS: [MessageHandler(Filters.text, save_img_class)],
-         },
-
-         fallbacks=[CommandHandler('cancel', cancel)]
-     )
+        fallbacks=[CommandHandler('cancel', cancel)]
+    )
     dp.add_handler(conv_handler)
+    
 
     #dp.add_handler(CommandHandler("train", train))
     #dp.add_handler(CommandHandler("predict", predict))
@@ -155,8 +176,7 @@ def main():
 
     dp.add_handler(MessageHandler(Filters.text, echo))
     #dp.add_handler(MessageHandler(Filters.video, process_video))
-    dp.add_handler(MessageHandler(Filters.photo, save_img))
-    dp.add_handler(MessageHandler(Filters.location, location))
+    dp.add_handler(MessageHandler(Filters.photo, predict))
 
 
     # log all errors

@@ -8,6 +8,8 @@ import torch
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
+import torch.optim as optim
+
 
 
 class ODT_Dataset(Dataset):
@@ -26,19 +28,31 @@ class ODT_Dataset(Dataset):
             raise Exception('Split must be one of:', splits)
 
         self.csv_file = os.getcwd() + "/../annotations/" + self.split + ".csv"
-        self.device = dev        
+        self.device = dev
+        self.classes_list = os.listdir(os.getcwd()+ '/../images/')
+        self.classes_list.sort()
+        self.dict_classes = {classe : i for i,classe in enumerate(self.classes_list)}
 
         #TODO: Define the needed transformations for the selected model.
-        #TODO: find the correct mean and std
-        self.transform = transforms.Compose([transforms.Resize(256),
-                                            transforms.CenterCrop(224),
-                                            transforms.ToTensor()])
+
+        #train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomRotation(10), transforms.RandomResizedCrop(150), transforms.ToTensor()])
+        #val_transform = transforms.Compose([transforms.Resize(150), transforms.CenterCrop(150), transforms.ToTensor()])
+        if self.split == "train":
+            self.transform = transforms.Compose([transforms.Resize(256), 
+                                                transforms.RandomHorizontalFlip(), 
+                                                transforms.RandomRotation(10), 
+                                                transforms.RandomResizedCrop(224), 
+                                                transforms.ToTensor(), 
+                                                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+        if self.split == "test":
+            self.transform = transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor()])
+
 
         #Open the csv file and extract img_path and label
         with open(self.csv_file) as file:
             csv_reader = csv.reader(file)
             for row in csv_reader:
-                self.samples.append((row[0], row[1]))
+                self.samples.append((row[0], self.dict_classes[row[1]]))
 
 
     def __len__(self):
@@ -79,7 +93,7 @@ if __name__ == '__main__':
         print(label)
     
     
-    train_loader = DataLoader(train_dataset, batch_size = 5, shuffle = False)
+    train_loader = DataLoader(train_dataset, batch_size = 5, shuffle = True)
 
     
     # Get a batch of training data
