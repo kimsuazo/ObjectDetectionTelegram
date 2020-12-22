@@ -1,6 +1,8 @@
 import os
 import logging
 import predict as pred
+import train as tr
+import utils
 from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup)
 
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
@@ -25,7 +27,7 @@ logger = logging.getLogger(__name__)
 def echo(update, context):
     """Echo the user message."""
     reply_keyboard = [["/Train", "/Predict"], ["/Upload", "/Classes"]]
-    update.message.reply_text("This is ODT bot (Object Detection Telegram bot), I am a Machine Learning interface that currently runs only an Object Classification model. \n What do you want to do?",
+    update.message.reply_text("What do you want to do?",
                             reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False))
 
 def start(update, context):
@@ -37,45 +39,45 @@ def start(update, context):
 ####    UPLOAD PIPELINE    ####
 
 def choose_upload(update, context):
-    update.message.reply_text("Which kind of file do you want to upload?",
+    update.message.reply_text("Which kind of file do you want to upload?\n/Cancel",
                             reply_markup=ReplyKeyboardMarkup([["/Video"], ["/Image"]]), one_time_keyboard=True)
 
 ####    VIDEO PIPELINE    ####
 
 def set_video(update, context):
-    update.message.reply_text("Please send me a video! \nTake into account to move the phone around the object so I can learn better this object.")
+    update.message.reply_text("Please send me a 10 seconds video! \nTake into account to move the phone around the object so I can learn better this object.\n/Cancel")
     
     return RECEIVE_VIDEO
 
 def receive_video(update, context):
-    video_file = update.message.video[-1].get_file()
+    video_file = update.message.video.get_file()
     video_file.download(video_input_path)
 
     reply_keyboard = []
     reply_keyboard = [os.listdir(classes_directory)]
     reply_keyboard.append(["new class"])
-    update.message.reply_text('Photo received! On which class does this object belong to? ',
+    update.message.reply_text('Video received! On which class does this object belong to? \n/Cancel',
                             reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
     return SAVE_VIDEO
 
 def save_video(update, context):
 
     if update.message.text == "new class":
-        update.message.reply_text('Please give a name for the new class:')
+        update.message.reply_text('Please give a name for the new class: \n/Cancel')
         return SAVE_VIDEO_CLASS
 
     class_directory = os.path.join(classes_directory, update.message.text)
-    utils.video2frames(video_input_path, class_directory)
-    update.message.reply_text('Photo saved!')
+    utils.video2frames(video_input_path, class_directory, update.message.text)
+    update.message.reply_text('Video saved!   ---> return to /Menu')
 
     return ConversationHandler.END
 
 def save_video_class(update, context):
     
     class_directory = os.path.join(classes_directory, update.message.text)
-    os.mkdir(img_directory)
-    utils.video2frames(video_input_path, class_directory)
-    update.message.reply_text('Photo saved!')
+    os.mkdir(class_directory)
+    utils.video2frames(video_input_path, class_directory, update.message.text)
+    update.message.reply_text('Video saved!   ---> return to /Menu')
 
     return ConversationHandler.END
 
@@ -83,7 +85,7 @@ def save_video_class(update, context):
 ####    IMAGE PIPELINE    ####
 
 def set_image(update, context):
-    update.message.reply_text("Please send me an image!")
+    update.message.reply_text("Please send me an image!\n/Cancel")
     
     return RECEIVE_IMAGE
 
@@ -94,21 +96,21 @@ def receive_image(update, context):
     reply_keyboard = []
     reply_keyboard = [os.listdir(classes_directory)]
     reply_keyboard.append(["new class"])
-    update.message.reply_text('Photo received! On which class does this object belong to?',
+    update.message.reply_text('Photo received! On which class does this object belong to? \n/Cancel',
                             reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
 
     return SAVE_IMAGE
 
 def save_image(update, context):
     if update.message.text == "new class":
-        update.message.reply_text('Please give a name for the new class:')
+        update.message.reply_text('Please give a name for the new class: \n/Cancel')
         return SAVE_IMAGE_CLASS
 
     class_directory = os.path.join(classes_directory, update.message.text)
     image_name = update.message.text + "_" + str(len(os.listdir(class_directory))) + '.jpg'
     image_name = os.path.join(class_directory, image_name)
     os.rename(image_input_path, image_name)
-    update.message.reply_text('Photo saved!')
+    update.message.reply_text('Photo saved!   ---> return to /Menu')
 
     return ConversationHandler.END
 
@@ -119,14 +121,14 @@ def save_image_class(update, context):
     image_name = update.message.text + "_" + str(len(os.listdir(class_directory))) + '.jpg'
     image_name = os.path.join(class_directory, image_name)
     os.rename(image_input_path, image_name)
-    update.message.reply_text('Photo saved!')
+    update.message.reply_text('Photo saved!   ---> return to /Menu')
 
     return ConversationHandler.END
 
 def cancel(update, context):
-    #logger.info("User %s canceled the conversation.", user.first_name)
-    update.message.reply_text('Bye! I hope we can talk again some day.',
-                              reply_markup=ReplyKeyboardRemove())
+    reply_keyboard = [["/Train", "/Predict"], ["/Upload", "/Classes"]]
+    update.message.reply_text("What do you want to do?",
+                                reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False))
 
     return ConversationHandler.END
 
@@ -134,53 +136,29 @@ def cancel(update, context):
 
 def classes(update, context):
     """Reply with current classes"""
-    reply_keyboard = [os.listdir(classes_directory)]
-    print(reply_keyboard)
+    classes = os.listdir(classes_directory)
+    class_string = ""
+    for i in classes:
+        class_string += i + "\n"
+
     update.message.reply_text(
-        "The classes are below:",
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+        "The classes are below:\n{}".format(class_string))
 
 
 def train(update, context):
     update.message.reply_text('Training model... This may take a while, you can come back later for the results.')
-    proc = subprocess.Popen(['python3', 'train_torch.py', '-tTrue'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    out = proc.communicate()[0]
-    update.message.reply_text(f'Done! Model with {out.decode("utf-8")[-21:-2]}%')
+    accuracy = tr.train_telegram()
+    update.message.reply_text("Done! Model with {} of accuracy".format(accuracy))
 
-def video(update, context):
-    global label
-    label = ' '.join(context.args)
-    if label == '':
-        update.message.reply_text('Add the label of the object after /video')
-    else:
-        update.message.reply_text('Go ahead, send a video to save.')
-
-def process_video(update, context):
-    global label
-    video_file = update.message.video.get_file()
-    video_file.download(f'input/{label}')
-    update.message.reply_text(f'Video of a {label} received! Processing...')
-    label = ''
-    proc = subprocess.Popen(['python3', 'video2frames.py'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    out = proc.communicate()[0]
-    update.message.reply_text(out.decode("utf-8"))
 
 
 def predict(update, context):
-    photo_file = update.message.photo[-1].get_file()
-    img_path = os.getcwd() + "/../input/predict/image.jpg"
-    photo_file.download(img_path)
-
-
-    prediction, confidence = pred.predict_telegram(img_path)
-    
-    update.message.reply_text('The class is {} with a confidence of {}'.format(prediction, confidence))
+    update.message.reply_text("Please send me a photo and I will tell you what I see!")
 
 
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
-
 
 
 def main():
@@ -195,8 +173,8 @@ def main():
 
     ####    START COMMAND    ####
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("Upload", choose_upload))
 
+    
     ####    UPLOAD PIPELINE    ####
     video_pipeline = ConversationHandler(
         entry_points=[CommandHandler("Video", set_video)],
@@ -224,16 +202,15 @@ def main():
     dp.add_handler(video_pipeline)
     dp.add_handler(image_pipeline)
 
-
-    #dp.add_handler(CommandHandler("train", train))
+    ####    COMMANDS    ####
+    dp.add_handler(CommandHandler("Upload", choose_upload))
+    dp.add_handler(CommandHandler("train", train))
     dp.add_handler(CommandHandler("predict", predict))
-    #dp.add_handler(CommandHandler("video", video))
     dp.add_handler(CommandHandler("classes", classes))
+    dp.add_handler(CommandHandler("menu", cancel))
 
     dp.add_handler(MessageHandler(Filters.text, echo))
-    #dp.add_handler(MessageHandler(Filters.video, process_video))
     dp.add_handler(MessageHandler(Filters.photo, predict))
-
 
     # log all errors
     dp.add_error_handler(error)

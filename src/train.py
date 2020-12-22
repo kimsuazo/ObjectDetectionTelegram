@@ -16,9 +16,8 @@ device = torch.device("cpu")
 
 
 
-def train_epoch(model, optimizer, criterion, train_loader, epochs):
+def train_epoch(model, optimizer, criterion, train_loader, epoch, epochs):
 
-    
     # train
     model.train()
     train_loop = tqdm(train_loader, unit=" batches")  # For printing the progress bar
@@ -33,24 +32,57 @@ def train_epoch(model, optimizer, criterion, train_loader, epochs):
         loss.backward()
         optimizer.step()
 
-def test_epoch(model,test_loader, epochs, acc):
+def test_epoch(model,test_loader, epoch, epochs):
 
     # test
+    acc = 0
     model.eval()
     test_loop = tqdm(test_loader, unit="batches")  # For printing the progress bar
     with torch.no_grad():
         for data, target in test_loop:
             test_loop.set_description('[TEST] Epoch {}/{}'.format(epoch + 1, epochs))
-            data, target = data.float().to(device), target.to(device)
+            data, target = data.float(), target
             output = model(data)
             acc += correct_predictions(output, target)
     acc = 100. * acc / len(test_loader.dataset)
     print(f'Test accuracy of {math.trunc(acc)}')
+    return math.trunc(acc)
 
 def correct_predictions(predicted_batch, label_batch):
     pred = predicted_batch.argmax(dim=1, keepdim=True) # get the index of the max log-probability
     acum = pred.eq(label_batch.view_as(pred)).sum().item()
     return acum
+
+def train_telegram(num_epochs = 15, batch_size = 5):
+
+    #Create CSV files
+    utils.create_dataset_splits(70,30,0)
+
+    #Instantiate datasets
+    train_dataset = ODT_Dataset(split = 'train')
+    test_dataset = ODT_Dataset(split = 'dev')
+
+    train_loader = DataLoader(train_dataset, batch_size, shuffle = True)
+    test_loader = DataLoader(test_dataset, batch_size)
+
+    #Loss
+    loss = nn.NLLLoss()
+
+    #Model
+    model = custom_resnet()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    #Training parameters
+    best_acc = 0
+
+    #Train by epochs
+    for epoch in range(num_epochs):
+        train_epoch(model, optimizer, loss, train_loader, epoch, num_epochs)
+        acc = test_epoch(model, test_loader, epoch, num_epochs)
+        if acc >= best_acc:
+            best_acc = acc
+            torch.save(model.state_dict(), os.getcwd() + "/trained_models/last_trained_model")
+    return(best_acc)
 
 
 if __name__ == '__main__':
