@@ -1,6 +1,6 @@
 import os
 import logging
-from google.cloud import dialogflow
+import dialogflow_v2 as dialogflow
 import predict as pred
 import train as tr
 import utils
@@ -20,6 +20,13 @@ root = os.getcwd()
 video_input_path = root + '/../input/video/input_video.mp4'
 image_input_path = root + '/../input/image/input_image.jpg'
 classes_directory = root + '/../images'
+
+def start(update, context):
+    update.message.reply_text("Hola, sóc el Joan Manel Comballa. Tu deus ser la detectiva Marta oi? \
+Això de que el Pere hagi desaparegut em té desesperat i m'agradaria ajudar-te en tot el possible.\
+Suposo que no has començat a inspeccionar el seu pis encara, el tiu sempre parlava d'una maleta i de que li agradaria marxar\
+però això d'estar tants dies sense dir res m'està començant a espantar. A veure si pots trobar la maleta, crec que estava al menjador, \
+quan la trobis envia'm una foto i et diré si és la maleta que toca")
 
 def echo(update, context):
     """Echo the user message."""
@@ -56,6 +63,16 @@ def prediction(update, context):
     image_file = update.message.photo[-1].get_file()
     image_file.download(image_input_path)
 
+    objectes = {"maleta" : "Sii, aquesta és la maleta d'en Pere!, que estrany que no se l'hagi endut...\
+\nSi no ha agafat la maleta, em temo que tampoc haurà agafat cap dels objectes dels que em parlava sempre, un dia em va\
+explicar que tenia un objecte guardat a cada habitació, mira que n'és de vedell!\
+\nL'objecte de l'estudi [###]", 
+    			"regla": "Ostres claar, un regle! Tot i que qui necessita un regle per anar pel mon?ira que era un paio especial", 
+    			"maquina afeitar": "", 
+    			"binocles": "", 
+    			"paraigues": "", 
+    			"t10": ""}
+
     prediction, confidence = pred.predict_telegram(image_input_path)
     update.message.reply_text("Això és {}".format(prediction))
 
@@ -71,10 +88,12 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    updater = Updater(open('../token.txt').read()[:-1], use_context=True)
+    updater = Updater(open('../token.txt').read(), use_context=True)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
+
+    dp.add_handler(CommandHandler("start", start))
 
     dp.add_handler(MessageHandler(Filters.text, echo))
     dp.add_handler(MessageHandler(Filters.photo, prediction))
