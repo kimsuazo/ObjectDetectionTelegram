@@ -63,18 +63,21 @@ def prediction(update, context):
     image_file = update.message.photo[-1].get_file()
     image_file.download(image_input_path)
 
-    objectes = {"maleta" : "Sii, aquesta és la maleta d'en Pere!, que estrany que no se l'hagi endut...\
+    objectes = {"Maleta" : "Sii, aquesta és la maleta d'en Pere!, que estrany que no se l'hagi endut...\
 \nSi no ha agafat la maleta, em temo que tampoc haurà agafat cap dels objectes dels que em parlava sempre, un dia em va\
 explicar que tenia un objecte guardat a cada habitació, mira que n'és de vedell!\
 \nL'objecte de l'estudi [###]", 
-    			"regla": "Ostres claar, un regle! Tot i que qui necessita un regle per anar pel mon?ira que era un paio especial", 
-    			"maquina afeitar": "", 
-    			"binocles": "", 
-    			"paraigues": "", 
-    			"t10": ""}
+    			"Regla": "Ostres claar, un regle! Tot i que qui necessita un regle per anar pel mon? mira que era un paio especial...", 
+    			"Maquina afeitar": "Em queda bé la barba oi?", 
+    			"Binocles": "", 
+    			"Paraigues": "", 
+    			"T10": ""}
 
     prediction, confidence = pred.predict_telegram(image_input_path)
-    update.message.reply_text("Això és {}".format(prediction))
+    if confidence >= 0.75 and prediction in objectes.keys():
+    	update.message.reply_text(objectes(prediction))
+    else:
+    	update.message.reply_text("No em sona aquest objecte...")
 
 def error(update, context):
     """Log Errors caused by Updates."""
