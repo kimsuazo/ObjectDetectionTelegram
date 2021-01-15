@@ -22,11 +22,12 @@ image_input_path = root + '/../input/image/input_image.jpg'
 classes_directory = root + '/../images'
 
 def start(update, context):
-    update.message.reply_text("Hola, sóc el Joan Manel Comballa. Tu deus ser la detectiva Marta oi? \
+    update.message.reply_text("Hola, sóc el Joan Manel Comballa. Tu deus ser la detectiva Marta oi?\
 Això de que el Pere hagi desaparegut em té desesperat i m'agradaria ajudar-te en tot el possible.\
-Suposo que no has començat a inspeccionar el seu pis encara, el tiu sempre parlava d'una maleta i de que li agradaria marxar\
-però això d'estar tants dies sense dir res m'està començant a espantar. A veure si pots trobar la maleta, crec que estava al menjador, \
-quan la trobis envia'm una foto i et diré si és la maleta que toca")
+Suposo que no has començat a inspeccionar el seu pis encara, el tiu sempre parlava d'una maleta i de que \
+li agradaria marxar, però això d'estar tants dies sense dir res m'està començant a espantar. A veure si pots trobar la maleta, crec que estava al menjador, \
+quan la trobis envia'm una foto i et diré si és la maleta que toca.\
+")
 
 def echo(update, context):
     """Echo the user message."""
@@ -63,20 +64,39 @@ def prediction(update, context):
     image_file = update.message.photo[-1].get_file()
     image_file.download(image_input_path)
 
-    objectes = {"Maleta" : "Sii, aquesta és la maleta d'en Pere!, que estrany que no se l'hagi endut...\
-\nSi no ha agafat la maleta, em temo que tampoc haurà agafat cap dels objectes dels que em parlava sempre, un dia em va\
-explicar que tenia un objecte guardat a cada habitació, mira que n'és de vedell!\
-\nL'objecte de l'estudi [###]", 
-    			"Regla": "Ostres claar, un regle! Tot i que qui necessita un regle per anar pel mon? mira que era un paio especial...", 
-    			"Maquina afeitar": "Em queda bé la barba oi?", 
-    			"Binocles": "", 
-    			"Paraigues": "Que passa pepoo, doncs clar que és un paraigues!", 
-    			"T10": ""}
+    objectes = {"Maleta" : " Sii, aquesta és la maleta d'en Pere!, que estrany que no se l'hagi endut, si hi ha roba a dins, posa-te-la! \n\
+Si no ha agafat la maleta, em temo que tampoc haurà agafat cap dels objectes dels que em parlava sempre, un dia em va explicar que tenia un \
+objecte guardat a cada habitació, mira que n'és de vedell! \n\
+Hi ha un objecte a l'estudi que deia que li serviria per executar un pla amb precisió, no se ben bé de quin objecte parlava, a veure si el pots trobar!\
+", 
+    			"Regla": " Claar, un regle! Com no se m’havia acudit!?\n\
+En fi, en Pere és un bon mito, sempre deixa codis secrets per aquí i per allà, potser aquest regle et serveix d’alguna cosa…\n\
+Pel que fa al següent objecte es troba al dormitori, busca bé que aquest el tenia ben amagat, és una mica xafarder el noi :S", 
+
+    			"Maquina afeitar": "Una màquina d’afeitar? Aquesta sí que no me l’esperava, la veritat és que el Pere no en té gaire de barba, això sí, de màquines en té unes quantes.\n\
+El següent objecte es troba al vestidor, i em sembla que tindràs feina per trobar-lo perquè hi ha un futimer de coses. A ell li agradava anar sempre preparat per\
+ les adversitats, així que alguna cosa hi deu haver al vestidor que necessites, o no?", 
+
+    			"Binocles": "Uns binòcles… Farem veure que no ho hem vist, però si que ho hem vist amb els binòcles ehh hehehe…\n\
+Al que anem, amb els binòcles recordo que sempre mirava pel balcó, no sé mai que buscava, potser trobes alguna informació útil.\n\
+Ah, i el següent objecte es troba al bany, sempre va arregladet el noi…", 
+
+    			"Paraigues": "Un paràigues? Qui collons necessita un paraigües? \nAi, que em sembla que estic començant a entendre per on van els tiros, i tu? \
+Vols una pista de la meva hipòtesis? hahaha és broma, per la detectiva Marta això és bufar i fer peks.\
+Va! Que ja només ens queda un objecte i es troba a la cuina, es troba a la cuina però per pura casualitat, sempre s’oblidava aquest tipus de coses per tot arreu.", 
+
+    			"T10": "Alaa una T10! T’ha costat trobar-la? Vaia desendreçat no està fet, mira que oblidar-se-la a la cuina… \
+Desendreçat i despistat, perquè allà on ha anat necessita una T10. Ja saps on és? Acostuma a agafar el metro.\
+Ara que ja sé a on ha anat i perquè estic força més tranquil! Gràcies per tot superDetectiva! Quan sàpigues que ha passat \
+escriu “/” + el lloc, i t’acabaré d’aclarir els dubtes extraoficialment. De mentres vaig a pintar, ballar i cantar amb els meus amics. Later!"}
 
     prediction, confidence = pred.predict_telegram(image_input_path)
     print(prediction, confidence)
-    if confidence >= 0.75 and prediction in objectes.keys():
-    	update.message.reply_text(objectes[prediction])
+    if confidence >= 0.75:
+        if prediction in objectes.keys():
+    	   update.message.reply_text(objectes[prediction])
+        else:
+            update.message.reply_text("Ai mira quin/a {} més maco/a")
     else:
     	update.message.reply_text("No em sona aquest objecte, potser no l'estic veient bé, prova de posar-lo amb un fons blanc.")
 
