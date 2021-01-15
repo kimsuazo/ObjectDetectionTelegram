@@ -92,11 +92,11 @@ escriu “/” + el lloc, i t’acabaré d’aclarir els dubtes extraoficialment
 
     prediction, confidence = pred.predict_telegram(image_input_path)
     print(prediction, confidence)
-    if confidence >= 0.75:
+    if confidence >= 0.65:
         if prediction in objectes.keys():
-    	   update.message.reply_text(objectes[prediction])
+    	    update.message.reply_text(objectes[prediction])
         else:
-            update.message.reply_text("Ai mira quin/a {} més maco/a")
+            update.message.reply_text("Ai mira quin/a {} més maco/a".format(prediction))
     else:
     	update.message.reply_text("No em sona aquest objecte, potser no l'estic veient bé, prova de posar-lo amb un fons blanc.")
 
