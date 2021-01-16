@@ -29,6 +29,19 @@ li agradaria marxar, però això d'estar tants dies sense dir res m'està comen�
 quan la trobis envia'm una foto i et diré si és la maleta que toca.\
 ")
 
+def paris(update, context):
+    update.message.reply_text("Oleeee! Ja has descobert què ha passat! En Pere no era més que el protagonista de “la merda se’ns menja” dels amics de les arts. \n\
+No sé quant deu haver durat el joc de pistes, hem estat una setmaneta preparant-lo però ja feia temps que ens rondava pel cap. El Pere en realitat sóc una mica\
+ jo (ara parla el Kimxu) tot i que hi hagi coses que no quadrin:\n\
+Ho tinc tot mil·limetrat.\n\
+Sempre et dic que no em queda bé la barba.\n\
+No vaig en metro des de Joanic a Verdeguer però també et guardaria seient.\
+Aquí la merda no se’ns menja pas, però també vull pagar una hipoteca amb tu.\n\
+De maleïr els dilluns en sabem força i de paraigües no en tenim (la Cristo i el Pepo l’han hagut de portar…).\n\
+A sobre lo de “no sóc massa guapo però sóc molt divertit” em va nikelao hehe.\n\n\
+Avui és el teu cumple i t’hem preparat tot això perquè t’estimem un munt, i jo t’estimo un munt més! \
+Però amb lo llesta que ets segur que has notat que falta algo de la cançó, que si, que el Pere aquest imaginari està a Paris i bla bla bla, però l’objectiu de tot això és poder comprovar que París et queda bé, a tu. Així que ja et deus imaginar quin és l’últim regal de tots :). ")
+    
 def echo(update, context):
     """Echo the user message."""
     text = update['message']['text']
@@ -118,6 +131,8 @@ def main():
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("paris", paris))
+
 
     dp.add_handler(MessageHandler(Filters.text, echo))
     dp.add_handler(MessageHandler(Filters.photo, prediction))
